@@ -1,6 +1,5 @@
 library(readxl)
 library(tidyverse)
-library(scales)
 
 
 
@@ -9,7 +8,8 @@ LEA_long     = read.csv("/home/ethan/Desktop/RStudio Workspace/Final Project/ccd
 LEA_geo     = read_xlsx("/home/ethan/Desktop/RStudio Workspace/Final Project/EDGE_SCHOOLDISTRICT_TL20_SY1920/EDGE_SCHOOLDISTRICT_TL20_SY1920.xlsx")
 State_names  = read.csv("/home/ethan/Desktop/RStudio Workspace/Final Project/us-state-ansi-fips.csv") %>%
   mutate(stusps = str_sub(stusps, 2, 3))
-Financial_data = read_tsv("/home/ethan/Desktop/RStudio Workspace/Final Project/sdf18_1a.txt")
+# This file needed to be mutated, because the state FP code, which is two digits, was in the form of a string and preceded by a space. All further
+# opterations would not work with this format.
 
 # These are the absolute directories for the data files on my device. They may be changed to relative directories in the working directory
 # if the files are present.
@@ -47,6 +47,7 @@ LEA_modified_school_count %>%
   summarize(Average_number_of_schools = mean(OPERATIONAL_SCHOOLS), Standard_deviation = sd(OPERATIONAL_SCHOOLS))
 
 quantile(LEA_modified_school_count$OPERATIONAL_SCHOOLS, c(seq(0.001, 0.01, 0.001), seq(0.02, 0.98, 0.02), seq(0.99, 0.999, 0.001)))
+# explotaroty, checking the number of schools a school district would have by percentile.
 
 color_1 = match(c("AK", "AL", "AR", "CT", "DE", "HI", "IL", "ME", "MI", "MN", "MT", "NE", "NM", "NV", "SC", "VA", "WA"), State_names$stusps)
 color_2 = match(c("AZ", "DC", "FL", "KS", "KY", "MS", "NC", "ND", "OR", "PA", "RI", "TX", "VT", "WI", "WY"), State_names$stusps)
@@ -74,7 +75,8 @@ LEA_geo_modified_color_continental  = LEA_geo_modified_continental %>%
 # Plot 1c marks every school district with a point having an area proportional to their student population, effectively making the shade indicate
 # density, and plot 1d marks every school district with a point of identical size to indicate their locations.
 
-# Plots 1a and 1b are equivalent to 1c except that they are not manually assigned one of the 4 colors, which leads to clarity issues.
+# Plot 1b equivalent to 1c except that they are not manually assigned one of the 4 colors, which leads to clarity issues.
+# Plot 1a is equivalent to 1b but does not have Hawaii/Alaska excluded.
 
 
 
@@ -159,7 +161,7 @@ table(LEA_geo_modified_color_continental$STATEFP)
 
 factor(LEA_geo_modified_color_continental$STATEFP)
 
-
+# Explotatory
 
 
 
@@ -238,6 +240,11 @@ Student_total_by_race_and_state_factored_lowest_white_percent_first$State_abb.x 
 
 
 
+# Plots 2a and 2b aims to show the racial composition of every state by percentage. The only difference is that 2a lists the states by their
+# abbreviation in alphabetical order, while 2b has them listed them by white student percentage in ascending order.
+
+# Plot 2a and 2c are colored and arranged identically, but the bars are plotted with absolute magnitudes representing the population of students of
+# the state and race.
 
 plot_2_a = Student_total_by_race_and_state_factored %>% ggplot(aes(y = Total_per_state, x = State_abb, fill = RACE_ETHNICITY))+
   geom_col(position = "fill")+
@@ -304,9 +311,10 @@ ggsave(filename = "2_c_150.png", plot_2_c,
 
 
 
+# Because plot 2c fails to clearly demonstrate how the students of each state distribute across the country, plot 3a has faceted plots with
+# individual labels for each race.
 
-
-
+# Plot 3av is a variant of 3a, which is arranged vertically to better accommendate vertical scrolling.
 
 plot_3_a = Student_total_by_race_and_state_factored %>% ggplot(aes(y = Total_per_state, x = State_abb))+
   geom_col()+
@@ -347,12 +355,14 @@ ggsave(filename = "3_a_v_150.png", plot_3_a_v,
 
 
 
-
-
 LEA_geo_modified_2 = LEA_geo_modified %>%
   transmute(water_to_land = AWATER/ALAND)
 
 Water_to_land_school_district = tibble(c(seq(0.001, 0.01, 0.001), seq(0.1, 0.9, 0.1), seq(0.99, 0.999, 0.001)), quantile(LEA_geo_modified_2$water_to_land, c(seq(0.001, 0.01, 0.001), seq(0.1, 0.9, 0.1), seq(0.99, 0.999, 0.001))))
+
+# Info: Determine how much water area a distrit would have on average; 50th percentile has a <1% water to land ratio, however, the ratio
+# goes up towards as the percentile value increases, to the point where the water area can be several times larger. Since water area
+# doesn't hold any population, it is plausible that the water area can be entirely ignored.
 
 str(LEA_geo_modified)
 
@@ -364,8 +374,6 @@ LEA_geo_modified_3 = left_join(LEA_geo, Student_total_by_race_and_district, by =
   left_join(Student_total_by_district, by = c("GEOID" = "LEAID")) %>%
   mutate(percentage = Total / STUDENT_COUNT, density = STUDENT_COUNT * 2589988 / ALAND) %>%
   filter(is.na(STUDENT_COUNT) == F)
-
-
 
 # 'ALAND' is in square meters, and the factor 258998 is to change the area into square miles.
 
@@ -384,9 +392,14 @@ LEA_geo_modified_4 %>% ggplot(aes(x = ALAND, y = percentage))+
   scale_x_continuous(trans = "log10")+
   facet_wrap(~RACE_ETHNICITY)
 
-# The points are shaded proportionally to their total student count, because I predicted that there will be many small rural 
-# districts essentially getting more representation in terms of shade if all districts, regardless of total student count,
-# are to be treated equally. Above is the output should I have assumed all school districts to be equal.
+# The points are shaded proportionally to their total student count. It is necessary because without doing so, smaller
+# districts with less students will be weighted the same as larger districts.
+
+# Consider if a massive district is to be divided into several. Should the districts not be weighted by student population, 
+# The same group of students, in this case, would get different amounts of representation in these two cases.
+
+# However, do note that the cosmetic choice of shading the points based on population ended up being deprecated, as it
+# leads to clarity issues.
 
 LEA_geo_modified_4 %>% ggplot(aes(x = density, y = percentage))+
   geom_point(shape = 16, alpha = LEA_geo_modified_4$STUDENT_COUNT / 1000000)+
@@ -395,11 +408,14 @@ LEA_geo_modified_4 %>% ggplot(aes(x = density, y = percentage))+
 
 
 
-arrange(LEA_geo_modified_4, desc(STUDENT_COUNT)) # the largest school district has a total of 483K students - and it was the LA Unified school district.
+arrange(LEA_geo_modified_4, desc(STUDENT_COUNT))
+# Info: the largest school district has a total of 483K students - and it was the LA Unified school district.
 
 
 
-
+# Due to clarity issues, the shading model adopted here in 4a is deprecated, and is replaced by 4b.
+# Plot 4c is based on 4b, but instead, some values are trimmed out to make the pattern for three of the races more obvious (Note that these
+# plots have individual axis).
 
 plot_4_a = LEA_geo_modified_4 %>% ggplot(aes(x = density, y = percentage, alpha = STUDENT_COUNT))+
   geom_point(shape = 16)+
@@ -410,8 +426,6 @@ plot_4_a = LEA_geo_modified_4 %>% ggplot(aes(x = density, y = percentage, alpha 
 
 ggsave(filename = "4_a_150.png", plot_4_a,
        width = 10, height = 8, dpi = 150, units = "in", device='png', limitsize = FALSE)
-
-
 
 
 
@@ -429,14 +443,13 @@ ggsave(filename = "4_b_150.png", plot_4_b,
 
 
 
-
-
-
 LEA_geo_modified_4_trimmed = LEA_geo_modified_4 %>%
-  filter(!(RACE_ETHNICITY == "Asian" & percentage >= 0.75)) %>%
+  filter(!(RACE_ETHNICITY == "Asian" & percentage >= 0.5)) %>%
   filter(!(RACE_ETHNICITY == "Native Hawaiian or Other Pacific Islander" & percentage >= 0.02)) %>%
   filter(!(RACE_ETHNICITY == "Two or more races" & percentage >= 0.25))
 
+# This is a manual adjustment to the percentage scale for certain races (the outliers make the majority compressed to the point where a
+# general pattern cannot be shown. A total of 339 out of 91224 entries are removed across all races.
 
 
 plot_4_c = LEA_geo_modified_4_trimmed %>% ggplot(aes(x = density, y = percentage, size = STUDENT_COUNT))+
@@ -460,11 +473,8 @@ ggsave(filename = "4_c_150.png", plot_4_c,
        width = 14, height =  12, dpi = 150, units = "in", device='png', limitsize = FALSE)
 
 
-
-
-
-
-
+# Plot 4d uses linear scale for student population density instead of linear scale. The result shows that the trend observed in 4c is almost
+# nonexistent in 4d.
 
 plot_4_d = LEA_geo_modified_4_trimmed %>% ggplot(aes(x = density, y = percentage, size = STUDENT_COUNT))+
   geom_point(shape = 16, alpha = 0.1)+
@@ -709,7 +719,7 @@ ggsave(filename = "5_c.png", plot_5_c,
 
 
 
-
+# Info: total number/percentage of students in the whole country by race
 
 Countrywide_student_total_by_race = summarize(group_by(Student_total_by_race_and_state, RACE_ETHNICITY), total = sum(Total_per_state))
 
