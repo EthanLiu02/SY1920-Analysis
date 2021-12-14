@@ -620,8 +620,11 @@ sum(Student_count_by_race_longitude_latitude$All_total == 0)
 # Among these plots, 5a is on the basis of percentage, while 5b is on the basis to absolute population. 5c is an attempt to use shading to deliver
 # the same information as 5a, however, it fails to do so clearly, as certain races have low percentages in most area that shades aren't meaningful.
 
-# It should be noted that these plots do have sections where there is no data - notably, in Nevada. While it could be filled with gray, as there
-# are already too many colors in use including black, it is much preferable to leave the areas blank.
+# It should be noted that these plots do have sections where there is no data - notably, in Nevada. While those areas could be filled with gray,
+# as there are already too many colors in use including black, it is much preferable to leave the areas blank.
+
+# Gradient scales do not work for this application, as the legend will clump up the different colors representing a small part of the total range
+# i.e. The five colors from dark blue to cyan only ranges from 0 to 2000, less than 1% of the linear scale.
 
 
 
